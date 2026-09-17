@@ -70,12 +70,6 @@ objc2-app-kit = { version = "0.3", default-features = false, features = [
   "std", "NSAccessibility", "NSApplication", "NSMenu", "NSMenuItem",
   "NSResponder", "NSRunningApplication", "NSStatusItem", "NSWorkspace",
 ] }
-sys-locale = "0.3"
-unicode-segmentation = "1.12"
-windows-sys = { version = "0.61", features = [
-  "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_UI_Shell",
-  "Win32_UI_WindowsAndMessaging",
-] }
 
 [profile.dev]
 split-debuginfo = "unpacked"
