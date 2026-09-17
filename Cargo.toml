@@ -64,6 +64,7 @@ tokio = { version = "1.53", features = [
   "rt-multi-thread", "net", "io-util", "macros", "sync", "time",
 ] }
 sha2 = "0.10"
+ashpd = { version = "0.13", default-features = false, features = ["async-io", "settings"] }
 
 [profile.dev]
 split-debuginfo = "unpacked"
