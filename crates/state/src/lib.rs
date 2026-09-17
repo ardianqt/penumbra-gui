@@ -1,60 +1,17 @@
-mod artist;
-mod catalog;
-mod cover;
-mod detail;
-mod discord;
-mod drm;
-mod genre;
-mod history;
-mod home;
-mod library;
 mod logging;
-mod lyrics;
-mod mosaic;
-mod pins;
-mod playback;
-mod profile;
-mod queue;
-mod remote;
-mod scrobble;
-mod search;
+mod output_log;
 mod session;
 mod settings;
-mod sheets;
-mod song;
-mod tags;
 mod toast;
-mod updates;
-mod usage;
 mod window_shape;
 
-pub use artist::ArtistDetail;
-pub use cover::Cover;
-pub use detail::{Collection, Detail, Header};
-pub use drm::{CdmState, Drm};
-pub use genre::{GenreDetails, Genres};
-pub use history::{History, HistoryState};
-pub use home::Home;
-pub use library::{Library, LibraryEvent, LibraryPart, LibraryState, Problem, Ready, Shelf};
 pub use logging::log_file;
-pub use lyrics::{Lyrics, LyricsState};
-pub use pins::{PinSort, Pins};
-pub use playback::{Origin, Playback, PlaybackState, Repeat, Sleep, Whence};
-pub use profile::Profile;
-pub use queue::{Named, Queue, Resume, Stub};
-pub use remote::{Remote, attach as attach_remote};
-pub use scrobble::{ScrobbleRow, ScrobbleState, Scrobbling};
-pub use search::{AlbumHit, ArtistHit, Hit, Kind, PlaylistHit, Search};
-pub use session::{Failure, ProviderInfo, Session, SessionEvent, SessionState};
+pub use output_log::{LogEntry, LogFilter, LogLevel, OutputLog};
+pub use session::{Session, SessionEvent, SessionState};
 pub use settings::{
-    AppSettings, DiscordName, FullscreenControlsAutohide, RomanizationScripts, SYSTEM_FONT,
-    SideTab, remember_window, window_placement,
+    AppSettings, FullscreenControlsAutohide, SideTab, remember_window, window_placement,
 };
-pub use song::SongDetail;
-pub use tags::{TagState, Tags};
 pub use toast::{Outcome, Target, Toast, Toasts};
-pub use updates::{Release, UpdateState, Updates};
-pub use usage::Usage;
 pub use window_shape::{apply_window_rounding, install_rounded_window_hook};
 
 use std::future::Future;
@@ -62,7 +19,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use gpui::{App, AppContext as _, Entity, Global};
-use music::{LyricsProvider, MusicProvider};
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
 
@@ -107,18 +63,7 @@ pub(crate) async fn join<T>(handle: JoinHandle<Result<T>>) -> Result<T> {
 
 pub struct Sonora {
     pub session: Entity<Session>,
-    pub cover: Entity<Cover>,
-    pub drm: Entity<Drm>,
-    pub library: Entity<Library>,
-    pub history: Entity<History>,
-    pub lyrics: Entity<Lyrics>,
-    pub pins: Entity<Pins>,
-    pub playback: Entity<Playback>,
-    pub queue: Entity<Queue>,
-    pub scrobbling: Entity<Scrobbling>,
     pub settings: Entity<AppSettings>,
-    pub updates: Entity<Updates>,
-    pub usage: Entity<Usage>,
 }
 
 impl Global for Sonora {}
@@ -129,73 +74,12 @@ impl Sonora {
     }
 }
 
-pub fn init(
-    cx: &mut App,
-    io: Io,
-    database: storage::Database,
-    providers: Vec<Arc<dyn MusicProvider>>,
-    local_provider: Arc<dyn MusicProvider>,
-    lyrics_providers: Vec<Arc<dyn LyricsProvider>>,
-) {
+pub fn init(cx: &mut App, io: Io) {
     cx.set_global(io.clone());
-    database.migrate();
-    music::credentials::migrate();
 
-    let settings = cx.new(|_| AppSettings::load(database.clone()));
-    let session =
-        cx.new(|cx| Session::new(providers, local_provider, settings.clone(), io.clone(), cx));
-    let library = cx.new(|cx| Library::new(session.clone(), io.clone(), cx));
-    let queue = cx.new(|cx| Queue::new(session.clone(), settings.clone(), cx));
-    let playback = cx.new(|cx| Playback::new(session.clone(), queue.clone(), settings.clone(), cx));
-    let history = cx.new(|cx| {
-        History::new(
-            session.clone(),
-            playback.clone(),
-            database.clone(),
-            io.clone(),
-            cx,
-        )
-    });
-    let scrobbling =
-        cx.new(|cx| Scrobbling::new(playback.clone(), settings.clone(), io.clone(), cx));
-    let lyrics = cx.new(|cx| {
-        Lyrics::new(
-            playback.clone(),
-            queue.clone(),
-            session.clone(),
-            settings.clone(),
-            lyrics_providers,
-            io.clone(),
-            cx,
-        )
-    });
-    let cover = cx.new(|cx| Cover::new(session.clone(), playback.clone(), io.clone(), cx));
-    let drm = cx.new(|cx| Drm::new(session.clone(), io.clone(), cx));
-    let updates = cx.new(|cx| Updates::new(settings.clone(), io.clone(), cx));
-    let usage = cx.new(|cx| Usage::new(session.clone(), database, io.clone(), cx));
-    let pins = cx.new(|cx| Pins::new(settings.clone(), library.clone(), session.clone(), cx));
-    discord::attach(
-        playback.clone(),
-        settings.clone(),
-        session.clone(),
-        cover.clone(),
-        io,
-        cx,
-    );
+    let settings = cx.new(|_| AppSettings::load());
+    let session = cx.new(|cx| Session::new(cx));
+    let log = OutputLog::init(cx);
 
-    cx.set_global(Sonora {
-        session,
-        cover,
-        drm,
-        library,
-        history,
-        lyrics,
-        pins,
-        playback,
-        queue,
-        scrobbling,
-        settings,
-        updates,
-        usage,
-    });
+    cx.set_global(Sonora { session, settings });
 }

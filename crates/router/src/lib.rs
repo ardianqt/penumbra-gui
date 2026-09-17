@@ -9,103 +9,107 @@ pub use uri::destination;
 use gpui::{App, AppContext as _, Entity, Global, SharedString};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LibraryTab {
-    Songs,
-    Albums,
-    Playlists,
-    Artists,
+pub enum MediatekTab {
+    Flasher,
+    Partitions,
+    RebootPower,
+    Settings,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NavEntry {
-    Home,
-    Search,
-    Library,
-    History,
-    Local,
-    Pins,
+    Mediatek,
+    Unisoc,
+    Xiaomi,
+    Firmwares,
+    Terminal,
+    Drivers,
 }
 
 impl NavEntry {
     pub const ALL: [Self; 6] = [
-        Self::Home,
-        Self::Search,
-        Self::Library,
-        Self::History,
-        Self::Local,
-        Self::Pins,
+        Self::Mediatek,
+        Self::Unisoc,
+        Self::Xiaomi,
+        Self::Firmwares,
+        Self::Terminal,
+        Self::Drivers,
     ];
 
     pub fn id(self) -> &'static str {
         match self {
-            Self::Home => "home",
-            Self::Search => "search",
-            Self::Library => "library",
-            Self::History => "history",
-            Self::Local => "local",
-            Self::Pins => "sidebar-pins",
+            Self::Mediatek => "mediatek",
+            Self::Unisoc => "unisoc",
+            Self::Xiaomi => "xiaomi",
+            Self::Firmwares => "firmwares",
+            Self::Terminal => "terminal",
+            Self::Drivers => "drivers",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            Self::Home => "nav-home",
-            Self::Search => "nav-search",
-            Self::Library => "nav-library",
-            Self::History => "nav-history",
-            Self::Local => "nav-local",
-            Self::Pins => "nav-pinned",
+            Self::Mediatek => "nav-mediatek",
+            Self::Unisoc => "nav-unisoc",
+            Self::Xiaomi => "nav-xiaomi",
+            Self::Firmwares => "nav-firmwares",
+            Self::Terminal => "nav-terminal",
+            Self::Drivers => "nav-drivers",
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Screen {
-    Home,
-    Search,
-    History,
-    Songs,
-    Albums,
-    Playlists,
-    Artists,
-    Imported,
+    MediatekFlasher,
+    MediatekPartitions,
+    MediatekRebootPower,
+    MediatekSettings,
+    Unisoc,
+    Xiaomi,
+    Firmwares,
+    Terminal,
+    Drivers,
 }
 
 impl Screen {
-    pub const ALL: [Self; 8] = [
-        Self::Home,
-        Self::Search,
-        Self::Songs,
-        Self::Albums,
-        Self::Artists,
-        Self::Playlists,
-        Self::Imported,
-        Self::History,
+    pub const ALL: [Self; 9] = [
+        Self::MediatekFlasher,
+        Self::MediatekPartitions,
+        Self::MediatekRebootPower,
+        Self::MediatekSettings,
+        Self::Unisoc,
+        Self::Xiaomi,
+        Self::Firmwares,
+        Self::Terminal,
+        Self::Drivers,
     ];
 
     pub fn id(self) -> &'static str {
         match self {
-            Self::Home => "home",
-            Self::Search => "search",
-            Self::History => "history",
-            Self::Songs => "songs",
-            Self::Albums => "albums",
-            Self::Playlists => "playlists",
-            Self::Artists => "artists",
-            Self::Imported => "imported",
+            Self::MediatekFlasher => "mediatek-flasher",
+            Self::MediatekPartitions => "mediatek-partitions",
+            Self::MediatekRebootPower => "mediatek-reboot-power",
+            Self::MediatekSettings => "mediatek-settings",
+            Self::Unisoc => "unisoc",
+            Self::Xiaomi => "xiaomi",
+            Self::Firmwares => "firmwares",
+            Self::Terminal => "terminal",
+            Self::Drivers => "drivers",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            Self::Home => "nav-home",
-            Self::Search => "nav-search",
-            Self::History => "nav-history",
-            Self::Songs => "nav-songs",
-            Self::Albums => "nav-albums",
-            Self::Playlists => "nav-playlists",
-            Self::Artists => "nav-artists",
-            Self::Imported => "nav-local",
+            Self::MediatekFlasher => "nav-mediatek-flasher",
+            Self::MediatekPartitions => "nav-mediatek-partitions",
+            Self::MediatekRebootPower => "nav-mediatek-reboot-power",
+            Self::MediatekSettings => "nav-mediatek-settings",
+            Self::Unisoc => "nav-unisoc",
+            Self::Xiaomi => "nav-xiaomi",
+            Self::Firmwares => "nav-firmwares",
+            Self::Terminal => "nav-terminal",
+            Self::Drivers => "nav-drivers",
         }
     }
 
@@ -115,62 +119,38 @@ impl Screen {
 
     pub fn destination(self) -> Destination {
         match self {
-            Self::Home => Destination::Home,
-            Self::Search => Destination::Search,
-            Self::History => Destination::History,
-            Self::Songs => Destination::Library(LibraryTab::Songs),
-            Self::Albums => Destination::Library(LibraryTab::Albums),
-            Self::Playlists => Destination::Library(LibraryTab::Playlists),
-            Self::Artists => Destination::Library(LibraryTab::Artists),
-            Self::Imported => Destination::Local(LibraryTab::Songs),
+            Self::MediatekFlasher => Destination::Mediatek(MediatekTab::Flasher),
+            Self::MediatekPartitions => Destination::Mediatek(MediatekTab::Partitions),
+            Self::MediatekRebootPower => Destination::Mediatek(MediatekTab::RebootPower),
+            Self::MediatekSettings => Destination::Mediatek(MediatekTab::Settings),
+            Self::Unisoc => Destination::Unisoc,
+            Self::Xiaomi => Destination::Xiaomi,
+            Self::Firmwares => Destination::Firmwares,
+            Self::Terminal => Destination::Terminal,
+            Self::Drivers => Destination::Drivers,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SettingsTab {
     General,
-    Appearance,
-    Playback,
-    Privacy,
-    Integrations,
-    About,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Destination {
-    Home,
-    History,
-    Library(LibraryTab),
-    Local(LibraryTab),
-    Album(SharedString),
-    Song(SharedString),
-    Playlist(SharedString),
-    Artist(SharedString),
-    User(SharedString),
-    Genre(SharedString),
-    Search,
+    Mediatek(MediatekTab),
+    Unisoc,
+    Xiaomi,
+    Firmwares,
+    Terminal,
+    Drivers,
     Settings(SettingsTab),
-    Fullscreen,
-}
-
-impl From<&ui::Pin> for Destination {
-    fn from(pin: &ui::Pin) -> Self {
-        let id = SharedString::from(pin.id.clone());
-        match pin.kind {
-            ui::PinKind::Album => Destination::Album(id),
-            ui::PinKind::Artist => Destination::Artist(id),
-            ui::PinKind::Playlist => Destination::Playlist(id),
-            ui::PinKind::Song => Destination::Song(id),
-        }
-    }
 }
 
 impl Destination {
     pub fn same_section(&self, other: &Destination) -> bool {
         match (self, other) {
-            (Destination::Library(_), Destination::Library(_))
-            | (Destination::Local(_), Destination::Local(_))
+            (Destination::Mediatek(_), Destination::Mediatek(_))
             | (Destination::Settings(_), Destination::Settings(_)) => true,
             _ => self == other,
         }
