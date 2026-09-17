@@ -1,11 +1,7 @@
-pub(crate) mod artist;
-pub(crate) mod detail;
-pub(crate) mod genre;
-pub(crate) mod history;
-pub(crate) mod home;
-pub(crate) mod library;
-pub(crate) mod login;
-pub(crate) mod search;
+pub(crate) mod drivers;
+pub(crate) mod firmwares;
+pub(crate) mod mediatek;
 pub(crate) mod settings;
-pub(crate) mod song;
-pub(crate) mod user;
+pub(crate) mod terminal;
+pub(crate) mod unisoc;
+pub(crate) mod xiaomi;

@@ -1,132 +1,224 @@
 use gpui::prelude::*;
-use gpui::{Context, Entity, Pixels, Render, StyleRefinement, Window, div, px};
-use state::{AppSettings, Playback, Queue, SideTab, Sonora};
-use ui::{ActiveTheme as _, MIN_CONTENT, Panel, Room, Side};
-
-use crate::chrome::Aside;
+use gpui::{Context, Entity, Pixels, Render, Window, div, px, svg};
+use state::{LogFilter, LogLevel, OutputLog, SideTab};
+use ui::{ActiveTheme as _, Button, Panel, Scroller, Separator, Side, Text};
 
 const MIN_WIDTH: Pixels = px(240.);
 const MAX_WIDTH: Pixels = px(560.);
 
-fn fills_content(width: Pixels) -> bool {
-    !Room::of(width).fits(Room::Wide)
-}
-
 pub(crate) struct SidebarRight {
-    aside: Entity<Aside>,
-    settings: Entity<AppSettings>,
     width: Pixels,
     open: bool,
+    log: Entity<OutputLog>,
 }
 
 impl SidebarRight {
-    pub(crate) fn new(
-        queue: Entity<Queue>,
-        playback: Entity<Playback>,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        let settings = Sonora::global(cx).settings.clone();
-        let width = px(settings.read(cx).sidebar_right_width()).clamp(MIN_WIDTH, MAX_WIDTH);
-        let open = settings.read(cx).sidebar_right_open();
-        let tab = settings.read(cx).sidebar_right_tab();
-        let aside = cx.new(|cx| Aside::new(queue, playback, tab, cx));
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let log = OutputLog::global(cx);
+        cx.observe(&log, |_, _, cx| cx.notify()).detach();
 
         Self {
-            aside,
-            settings,
-            width,
-            open,
+            width: px(240.).clamp(MIN_WIDTH, MAX_WIDTH),
+            open: false,
+            log,
         }
     }
 
-    pub(crate) fn is_open(&self) -> bool {
+    pub fn is_open(&self) -> bool {
         self.open
     }
 
-    pub(crate) fn available(window: &Window) -> bool {
-        !fills_content(window.viewport_size().width)
+    pub fn available(window: &Window) -> bool {
+        window.viewport_size().width > px(800.)
     }
 
-    pub(crate) fn covers_content(&self, _window: &Window) -> bool {
+    pub fn covers_content(&self, _window: &Window) -> bool {
         false
     }
 
-    pub(crate) fn occupied_width(&self, window: &Window) -> Pixels {
+    pub fn occupied_width(&self, window: &Window) -> Pixels {
         match self.open && Self::available(window) {
             false => Pixels::ZERO,
             true => self.width,
         }
     }
 
-    pub(crate) fn toggle(&mut self, cx: &mut Context<Self>) {
+    pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.open = !self.open;
-        if self.open {
-            let tab = self.aside.read(cx).tab();
-            self.aside.update(cx, |aside, cx| aside.show(tab, cx));
-        }
-        self.remember(cx);
         cx.notify();
     }
 
-    pub(crate) fn show(&mut self, tab: SideTab, cx: &mut Context<Self>) {
-        if self.open && self.aside.read(cx).tab() == tab {
-            self.close(cx);
-            return;
-        }
-        if self.aside.read(cx).tab() != tab {
-            self.settings
-                .update(cx, |settings, cx| settings.set_sidebar_right_tab(tab, cx));
-        }
-        self.aside.update(cx, |aside, cx| aside.show(tab, cx));
+    pub fn show(&mut self, _tab: SideTab, cx: &mut Context<Self>) {
         self.open = true;
-        self.remember(cx);
         cx.notify();
-    }
-
-    pub(crate) fn close(&mut self, cx: &mut Context<Self>) {
-        self.aside.update(cx, |aside, cx| aside.dismiss(cx));
-        self.open = false;
-        self.remember(cx);
-        cx.notify();
-    }
-
-    fn remember(&self, cx: &mut Context<Self>) {
-        let open = self.open;
-        self.settings
-            .update(cx, |settings, cx| settings.set_sidebar_right_open(open, cx));
-    }
-
-    fn persist(&self, cx: &mut Context<Self>) {
-        let width = self.width / px(1.);
-        self.settings.update(cx, |settings, cx| {
-            settings.set_sidebar_right_width(width, cx)
-        });
     }
 }
 
 impl Render for SidebarRight {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.open || !Self::available(window) {
-            return div().into_any_element();
-        }
-
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.theme();
+        let log = self.log.read(cx);
+        let filter = log.filter();
+        let auto_scroll = log.auto_scroll();
+
+        let entries: Vec<state::LogEntry> = log.entries().cloned().collect();
+        drop(log);
 
         Panel::new("sidebar-right", Side::Right, self.width)
             .limits(MIN_WIDTH, MAX_WIDTH)
-            .reach(super::cap(MIN_WIDTH, MAX_WIDTH, MIN_CONTENT, window))
-            .on_resize(cx.listener(|this, width: &Pixels, _, cx| {
-                this.width = *width;
-                this.persist(cx);
-                cx.notify();
-            }))
-            .when(!theme.transparent, |this| this.bg(theme.background))
-            .border_color(theme.border)
+            .when(!self.open, |this| this.hidden())
+            .bg(theme.sidebar)
+            .border_color(theme.sidebar_border)
             .child(
-                self.aside
-                    .clone()
-                    .cached(StyleRefinement::default().size_full()),
+                div()
+                    .flex()
+                    .flex_col()
+                    .size_full()
+                    // Header
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .px_3()
+                            .py_2()
+                            .border_b_1()
+                            .border_color(theme.sidebar_border)
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .text_sm()
+                                    .child("Output Log"),
+                            )
+                            .child(
+                                Button::new("clear-log")
+                                    .label("Clear")
+                                    .ghost()
+                                    .small()
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.log.update(cx, |log, cx| log.clear(cx));
+                                    })),
+                            ),
+                    )
+                    // Filter bar
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .px_3()
+                            .py_1()
+                            .gap_1()
+                            .border_b_1()
+                            .border_color(theme.sidebar_border.opacity(0.5))
+                            .child(filter_button(cx, "All", filter == LogFilter::All, move || {
+                                LogFilter::All
+                            }))
+                            .child(filter_button(cx, "Errors", filter == LogFilter::Errors, move || {
+                                LogFilter::Errors
+                            }))
+                            .child(filter_button(cx, "Warnings", filter == LogFilter::Warnings, move || {
+                                LogFilter::Warnings
+                            }))
+                            .child(filter_button(cx, "Info", filter == LogFilter::Info, move || {
+                                LogFilter::Info
+                            }))
+                            .child(div().flex_1())
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_1()
+                                    .text_xs()
+                                    .text_color(theme.muted_foreground)
+                                    .child(
+                                        svg()
+                                            .path(icons::path(match auto_scroll {
+                                                true => "icons/chevron-down.svg",
+                                                false => "icons/chevron-up.svg",
+                                            }))
+                                            .size(px(12.))
+                                            .text_color(theme.muted_foreground),
+                                    )
+                                    .child("Auto-scroll"),
+                            ),
+                    )
+                    // Log entries
+                    .child(
+                        Scroller::new("output-log-scroll", cx)
+                            .flex_1()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .w_full()
+                                    .px_2()
+                                    .py_1()
+                                    .gap_px()
+                                    .children(
+                                        if entries.is_empty() {
+                                            vec![div()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .h_full()
+                                                .text_color(theme.muted_foreground)
+                                                .text_xs()
+                                                .child("No log entries")
+                                                .into_any_element()]
+                                        } else {
+                                            entries.iter().map(|entry| {
+                                                let color = match entry.level {
+                                                    LogLevel::Error => theme.error,
+                                                    LogLevel::Warn => theme.warning,
+                                                    LogLevel::Info => theme.accent,
+                                                    LogLevel::Debug => theme.muted_foreground,
+                                                };
+                                                div()
+                                                    .flex()
+                                                    .flex_none()
+                                                    .gap_2()
+                                                    .py(px(2.))
+                                                    .px_1()
+                                                    .text_xs()
+                                                    .child(
+                                                        div()
+                                                            .flex_none()
+                                                            .font_family("monospace")
+                                                            .text_color(theme.muted_foreground.opacity(0.7))
+                                                            .child(&entry.timestamp),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .font_family("monospace")
+                                                            .text_color(color)
+                                                            .child(&entry.message),
+                                                    )
+                                                    .into_any_element()
+                                            }).collect()
+                                        },
+                                    ),
+                            ),
+                    ),
             )
-            .into_any_element()
     }
+}
+
+fn filter_button(
+    cx: &mut Context<SidebarRight>,
+    label: &'static str,
+    active: bool,
+    filter: fn() -> LogFilter,
+) -> AnyElement {
+    let theme = *cx.theme();
+
+    Button::new((label, "log-filter"))
+        .label(label)
+        .ghost()
+        .small()
+        .when(active, |b| {
+            b.text_color(theme.accent)
+        })
+        .on_click(cx.listener(move |this, _, _, cx| {
+            this.log.update(cx, |log, cx| log.set_filter(filter(), cx));
+        }))
+        .into_any_element()
 }
