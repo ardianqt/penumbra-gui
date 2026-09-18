@@ -10,6 +10,14 @@ use crate::chrome::{
 };
 use crate::shells::Shell;
 
+struct Placeholder;
+
+impl Render for Placeholder {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+    }
+}
+
 pub(crate) struct Workspace {
     sidebar: Entity<SidebarLeft>,
     player_bar: Entity<PlayerBar>,
@@ -30,7 +38,7 @@ impl Workspace {
             player_bar,
             sidebar_right,
             toasts: cx.new(ToastStack::new),
-            content: cx.new(|_cx| div()).into(),
+            content: cx.new(|_cx| Placeholder).into(),
             focus: cx.focus_handle(),
         }
     }

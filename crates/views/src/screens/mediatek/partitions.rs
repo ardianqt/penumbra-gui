@@ -74,8 +74,10 @@ impl Render for MediatekPartitions {
                     .border_b_1()
                     .border_color(theme.sidebar_border)
                     .child(div().text_sm().child("Output Folder:"))
-                    .child(div().flex_1().text_color(theme.muted_foreground).text_sm()
-                        .child(match &self.output_dir { Some(d) => d.as_ref(), None => "Not selected" }))
+                    .child({
+                        let label = self.output_dir.clone().unwrap_or_else(|| "Not selected".into());
+                        div().flex_1().text_color(theme.muted_foreground).text_sm().child(label)
+                    })
                     .child(Button::new("browse-output").label("Browse...").ghost().small())
                     .child(div().flex_1())
                     .child(Button::new("backup-selected").label("Backup Selected").ghost().small())

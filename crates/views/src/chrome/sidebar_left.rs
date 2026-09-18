@@ -229,7 +229,7 @@ impl SidebarLeft {
             false => theme.muted_foreground,
         };
 
-        let row = Button::new(index.into())
+        let row = Button::new(index)
             .ghost()
             .icon(icon)
             .tint(tint)
@@ -277,7 +277,7 @@ impl SidebarLeft {
 
         match group {
             Group::Mediatek => {
-                let mut items: Vec<AnyElement> = MEDIATEK_TABS
+                let items: Vec<AnyElement> = MEDIATEK_TABS
                     .into_iter()
                     .map(|(name, tab_id)| {
                         tab(name.into(), Destination::Mediatek(tab_id))
@@ -306,7 +306,7 @@ impl Render for SidebarLeft {
         self.follow(&current);
         self.adapt(super::Chrome::sidebar_right(cx), window, cx);
 
-        let mut rows = self.navigation(cx);
+        let rows = self.navigation(cx);
 
         let overlaid = self.overlays();
         let panel = Panel::new("sidebar-left", Side::Left, self.width)

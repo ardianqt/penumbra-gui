@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{Context, Entity, Pixels, Render, ScrollHandle, Window, div, px, svg};
+use gpui::{AnyElement, Context, Entity, Pixels, Render, ScrollHandle, Window, div, px, svg};
 use state::{LogFilter, LogLevel, OutputLog, SideTab};
 use ui::{ActiveTheme as _, Button, Panel, Scroller, Side};
 

@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{Context, Entity, Render, Window, div, px};
+use gpui::{AnyElement, Context, Entity, Render, Window, div, px};
 use state::{LogLevel, OutputLog};
 use ui::{
     ActiveTheme as _, Button,

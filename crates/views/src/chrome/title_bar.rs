@@ -1,6 +1,5 @@
 use gpui::prelude::*;
 use gpui::{AnyView, Context, EventEmitter, Render, Window, div, px};
-use input::{MinimizeWindow, ZoomWindow, CloseWindow};
 use router::{back, forward};
 use ui::{ActiveTheme as _, Button};
 
@@ -102,22 +101,19 @@ impl Render for TitleBar {
                     Button::new("minimize")
                         .icon("icons/minimize.svg")
                         .ghost()
-                        .small()
-                        .on_click(|_, _, cx| cx.emit(MinimizeWindow)),
+                        .small(),
                 )
                 .child(
                     Button::new("maximize")
                         .icon("icons/maximize.svg")
                         .ghost()
-                        .small()
-                        .on_click(|_, _, cx| cx.emit(ZoomWindow)),
+                        .small(),
                 )
                 .child(
                     Button::new("close")
                         .icon("icons/x.svg")
                         .ghost()
-                        .small()
-                        .on_click(|_, _, cx| cx.emit(CloseWindow)),
+                        .small(),
                 ),
             )
     }

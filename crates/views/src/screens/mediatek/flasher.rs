@@ -139,16 +139,14 @@ impl Render for MediatekFlasher {
                     .border_b_1()
                     .border_color(theme.sidebar_border)
                     .child(div().text_sm().child("Device:"))
-                    .child(
+                    .child({
+                        let name = self.device_name.clone().unwrap_or_else(|| "No device connected".into());
                         div()
                             .flex_1()
-                            .text_color(match self.connected { true => theme.primary, false => theme.muted_foreground })
+                            .text_color(if self.connected { theme.primary } else { theme.muted_foreground })
                             .text_sm()
-                            .child(match &self.device_name {
-                                Some(n) => n.as_ref(),
-                                None => "No device connected",
-                            }),
-                    )
+                            .child(name)
+                    })
                     .child(match self.connected {
                         true => Button::new("disconnect").label("Disconnect").ghost().small(),
                         false => Button::new("connect")

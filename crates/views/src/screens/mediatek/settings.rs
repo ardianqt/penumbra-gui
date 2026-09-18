@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{Context, Entity, Render, SharedString, Window, div, px};
+use gpui::{AnyElement, Context, Entity, Render, SharedString, Window, div, px};
 use state::{LogLevel, OutputLog};
 use ui::{
     ActiveTheme as _, Button,
@@ -125,44 +125,42 @@ fn backend_option(
         false => theme.muted_foreground,
     };
 
-    Button::new(label)
-        .ghost()
-        .w_full()
+    div()
+        .flex()
+        .items_center()
+        .gap_3()
+        .py_1()
+        .rounded_md()
+        .hover(|s| s.bg(theme.secondary))
+        .on_click(cx.listener(move |this, _, _, cx| this.set_backend(backend, cx)))
         .child(
             div()
+                .flex_none()
+                .size(px(18.))
+                .rounded_full()
+                .border_2()
+                .border_color(accent)
                 .flex()
                 .items_center()
-                .gap_3()
-                .py_1()
+                .justify_center()
                 .child(
-                    div()
-                        .flex_none()
-                        .size(px(18.))
-                        .rounded_full()
-                        .border_2()
-                        .border_color(accent)
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(
-                            match selected {
-                                true => div()
-                                    .size(px(10.))
-                                    .rounded_full()
-                                    .bg(accent)
-                                    .into_any_element(),
-                                false => div().into_any_element(),
-                            },
-                        ),
-                )
-                .child(
-                    div()
-                        .flex_col()
-                        .child(div().text_sm().text_color(match selected { true => theme.foreground, false => theme.muted_foreground }).child(label))
-                        .child(div().text_xs().text_color(theme.muted_foreground).child(detail)),
+                    if selected {
+                        div()
+                            .size(px(10.))
+                            .rounded_full()
+                            .bg(accent)
+                            .into_any_element()
+                    } else {
+                        div().into_any_element()
+                    },
                 ),
         )
-        .on_click(cx.listener(move |this, _, _, cx| this.set_backend(backend, cx)))
+        .child(
+            div()
+                .flex_col()
+                .child(div().text_sm().text_color(if selected { theme.foreground } else { theme.muted_foreground }).child(label))
+                .child(div().text_xs().text_color(theme.muted_foreground).child(detail)),
+        )
         .into_any_element()
 }
 
