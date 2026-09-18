@@ -1,44 +1,63 @@
 use gpui::prelude::*;
-use gpui::{AnyElement, Context, Entity, Render, Window, div, px};
-use state::{LogLevel, OutputLog};
+use gpui::{AnyElement, Context, Entity, Render, Task, Window, div, px};
+use state::{LogLevel, OutputLog, Io};
 use ui::{
     ActiveTheme as _, Button,
 };
 
 pub(crate) struct MediatekRebootPower {
     log: Entity<OutputLog>,
-    log_added: bool,
+    io: Io,
+    task: Option<Task<()>>,
 }
 
 impl MediatekRebootPower {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let log = OutputLog::global(cx);
+        let io = Io::global(cx);
         cx.observe(&log, |_, _, cx| cx.notify()).detach();
         Self {
             log,
-            log_added: false,
+            io,
+            task: None,
         }
     }
 
-    fn ensure_log(&mut self, cx: &mut Context<Self>) {
-        if !self.log_added {
-            self.log_added = true;
-            self.log.update(cx, |log, cx| {
-                log.push(LogLevel::Info, "Reboot & Power page loaded", cx);
+    fn execute(&mut self, action: &'static str, cx: &mut Context<Self>) {
+        let log = self.log.clone();
+        let io = self.io.clone();
+
+        self.task = Some(cx.spawn(async move |this, cx| {
+            log.update(cx, |l, cx| {
+                l.push(LogLevel::Info, format!("Sending {action} command..."), cx);
             });
-        }
-    }
 
-    fn execute(&mut self, action: &str, cx: &mut Context<Self>) {
-        self.log.update(cx, |log, cx| {
-            log.push(LogLevel::Info, format!("Executing: {}", action), cx);
-        });
+            let result = io.spawn_blocking(move || {
+                let da = Vec::new();
+                let (mut device, _info) = crate::backend::MtkConnection::connect(&da)?;
+                crate::backend::MtkConnection::reboot(&mut device, action)
+            }).await;
+
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(Ok(msg)) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Info, msg, cx));
+                    }
+                    Ok(Err(e)) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Error, e, cx));
+                    }
+                    Err(e) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Error, format!("Task failed: {e}"), cx));
+                    }
+                }
+                cx.notify();
+            }).ok();
+        }));
     }
 }
 
 impl Render for MediatekRebootPower {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.ensure_log(cx);
         let theme = *cx.theme();
 
         div()
@@ -50,6 +69,13 @@ impl Render for MediatekRebootPower {
                 div()
                     .text_2xl()
                     .child("Reboot & Power"),
+            )
+            .child(
+                div()
+                    .mt_4()
+                    .text_sm()
+                    .text_color(theme.muted_foreground)
+                    .child("Connect a device first, then select a reboot mode."),
             )
             .child(
                 div()

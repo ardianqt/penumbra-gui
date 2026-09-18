@@ -1,5 +1,7 @@
+use std::path::PathBuf;
+
 use gpui::prelude::*;
-use gpui::{Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
+use gpui::{AnyElement, Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
 use state::{OutputLog, Io};
 use ui::{ActiveTheme as _, Button, Checkbox, Scroller};
 
@@ -31,26 +33,103 @@ impl MediatekPartitions {
         let io = Io::global(cx);
         cx.observe(&log, |_, _, cx| cx.notify()).detach();
 
-        let partitions = vec![
-            ("preloader", 0x0, 0x200000, true),
-            ("lk", 0x200000, 0x400000, true),
-            ("boot", 0x600000, 0x800000, false),
-            ("recovery", 0xE00000, 0x800000, false),
-            ("system", 0x1600000, 0x8000000, false),
-            ("vendor", 0x9600000, 0x2000000, false),
-            ("metadata", 0xB600000, 0x200000, true),
-            ("nvram", 0xB800000, 0x1000000, false),
-            ("userdata", 0xCC00000, 0x40000000, false),
-        ].into_iter().enumerate().map(|(i, (n, s, sz, cr))| PartitionEntry {
-            index: i + 1,
-            name: n.to_string(),
-            enabled: false,
-            start_addr: s,
-            size: sz,
-            is_critical: cr,
-        }).collect();
+        Self {
+            log,
+            io,
+            output_dir: None,
+            partitions: Vec::new(),
+            connected: false,
+            task: None,
+            scrollbar: cx.new(|_| ui::Scrollbar::new(ScrollHandle::new())),
+        }
+    }
 
-        Self { log, io, output_dir: None, partitions, connected: false, task: None, scrollbar: cx.new(|_| ui::Scrollbar::new(ScrollHandle::new())) }
+    fn dump_partition(&mut self, name: &str, cx: &mut Context<Self>) {
+        let log = self.log.clone();
+        let io = self.io.clone();
+        let part_name = name.to_string();
+        let out_dir = self.output_dir.clone()
+            .map(|p| PathBuf::from(p.as_ref()))
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        self.task = Some(cx.spawn(async move |this, cx| {
+            let output = out_dir.join(format!("{part_name}.bin"));
+            log.update(cx, |l, cx| {
+                l.push(LogLevel::Info, format!("Dumping {part_name}..."), cx);
+            });
+
+            let result = io.spawn_blocking(move || {
+                let da = Vec::new();
+                let (mut device, _info) = crate::backend::MtkConnection::connect(&da)?;
+                crate::backend::MtkConnection::read_partition(&mut device, &part_name, &output)
+            }).await;
+
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(Ok(msg)) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Info, msg, cx));
+                    }
+                    Ok(Err(e)) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Error, e, cx));
+                    }
+                    Err(e) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Error, format!("Task failed: {e}"), cx));
+                    }
+                }
+                cx.notify();
+            }).ok();
+        }));
+    }
+
+    fn erase_partition(&mut self, name: &str, cx: &mut Context<Self>) {
+        let log = self.log.clone();
+        let io = self.io.clone();
+        let part_name = name.to_string();
+
+        self.task = Some(cx.spawn(async move |this, cx| {
+            log.update(cx, |l, cx| {
+                l.push(LogLevel::Warn, format!("Erasing {part_name}..."), cx);
+            });
+
+            let result = io.spawn_blocking(move || {
+                let da = Vec::new();
+                let (mut device, _info) = crate::backend::MtkConnection::connect(&da)?;
+                crate::backend::MtkConnection::erase_partition(&mut device, &part_name)
+            }).await;
+
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(Ok(msg)) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Info, msg, cx));
+                    }
+                    Ok(Err(e)) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Error, e, cx));
+                    }
+                    Err(e) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Error, format!("Task failed: {e}"), cx));
+                    }
+                }
+                cx.notify();
+            }).ok();
+        }));
+    }
+
+    fn toggle_partition(&mut self, index: usize) {
+        if let Some(entry) = self.partitions.get_mut(index) {
+            entry.enabled = !entry.enabled;
+        }
+    }
+
+    fn select_all(&mut self) {
+        for entry in &mut self.partitions {
+            entry.enabled = true;
+        }
+    }
+
+    fn deselect_all(&mut self) {
+        for entry in &mut self.partitions {
+            entry.enabled = false;
+        }
     }
 }
 
@@ -84,10 +163,11 @@ impl Render for MediatekPartitions {
                     .child(Button::new("backup-all").label("Backup All").ghost().small()),
             )
             .child(
-                div()
-                    .flex().items_center().px_4().py_1().gap_2().border_b_1().border_color(theme.sidebar_border)
-                    .child(Button::new("part-select-all").label("Select All").ghost().small())
-                    .child(Button::new("part-deselect-all").label("Deselect All").ghost().small())
+                div().flex().items_center().px_4().py_1().gap_2().border_b_1().border_color(theme.sidebar_border)
+                    .child(Button::new("part-select-all").label("Select All").ghost().small()
+                        .on_click(cx.listener(|this, _, _, cx| { this.select_all(); cx.notify(); })))
+                    .child(Button::new("part-deselect-all").label("Deselect All").ghost().small()
+                        .on_click(cx.listener(|this, _, _, cx| { this.deselect_all(); cx.notify(); })))
                     .child(div().flex_1())
                     .child(Button::new("refresh-table").label("Refresh").ghost().small()),
             )
@@ -103,31 +183,34 @@ impl Render for MediatekPartitions {
             )
             .child(
                 Scroller::new("partitions-list", &self.scrollbar).flex_1().child(
-                    div().flex().flex_col().w_full().children(self.partitions.iter().map(|p| {
-                        let critical_badge = p.is_critical.then(|| {
-                            div().px_1().rounded_sm().bg(theme.danger.opacity(0.2)).text_color(theme.danger)
-                                .text_xs().child("CRIT").into_any_element()
-                        });
-                        div().flex().items_center().px_4().py(px(6.)).gap_4()
-                            .border_b_1().border_color(theme.sidebar_border.opacity(0.5)).text_sm()
-                            .child(Checkbox::new(("part-entry", p.index), p.enabled)
-                                .on_click(cx.listener(move |_, _, _, _| {})))
-                            .child(div().w(px(40.)).text_color(theme.muted_foreground).child(p.index.to_string()))
-                            .child(div().w(px(150.)).flex().items_center().gap_1()
-                                .child(div().child(p.name.clone()))
-                                .when_some(critical_badge, |this, badge| this.child(badge)))
-                            .child(div().w(px(100.)).child(format!("0x{:08X}", p.start_addr)))
-                            .child(div().w(px(100.)).child(format_size(p.size)))
-                            .child(div().flex_1().flex().items_center().gap_2()
-                                .child(Button::new(("dump", p.index)).label("Dump").ghost().small())
-                                .child(Button::new(("write", p.index)).label("Write").ghost().small())
-                                .child(if p.is_critical {
-                                    Button::new(("erase", p.index)).label("Protected").ghost().small().into_any_element()
-                                } else {
-                                    Button::new(("erase", p.index)).label("Erase").ghost().small().into_any_element()
-                                }))
+                    if self.partitions.is_empty() {
+                        div().flex().items_center().justify_center().h_full()
+                            .text_color(theme.muted_foreground).text_sm()
+                            .child("Connect a device and load a scatter file to see partitions.")
                             .into_any_element()
-                    })),
+                    } else {
+                        let parts: Vec<_> = self.partitions.iter().map(|p| {
+                            (p.index, p.name.clone(), p.enabled, p.start_addr, p.size)
+                        }).collect();
+                        div().flex().flex_col().w_full().children(parts.into_iter().map(|(idx, name, enabled, start_addr, size)| {
+                            let name_clone = name.clone();
+                            div().flex().items_center().px_4().py(px(6.)).gap_4()
+                                .border_b_1().border_color(theme.sidebar_border.opacity(0.5)).text_sm()
+                                .child(Checkbox::new(("part-entry", idx), enabled)
+                                    .on_click(cx.listener(move |this, _, _, _| { this.toggle_partition(idx); })))
+                                .child(div().w(px(40.)).text_color(theme.muted_foreground).child(idx.to_string()))
+                                .child(div().w(px(150.)).flex().items_center().gap_1()
+                                    .child(div().child(name.clone())))
+                                .child(div().w(px(100.)).child(format!("0x{:08X}", start_addr)))
+                                .child(div().w(px(100.)).child(format_size(size)))
+                                .child(div().flex_1().flex().items_center().gap_2()
+                                    .child(Button::new(("dump", idx)).label("Dump").ghost().small()
+                                        .on_click(cx.listener(move |this, _, _, cx| this.dump_partition(&name_clone, cx))))
+                                    .child(Button::new(("erase", idx)).label("Erase").ghost().small()
+                                        .on_click(cx.listener(move |this, _, _, cx| this.erase_partition(&name_clone, cx)))))
+                                .into_any_element()
+                        })),
+                    },
                 ),
             )
     }

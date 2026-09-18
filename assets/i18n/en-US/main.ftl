@@ -32,7 +32,7 @@ nav-local = Local Music
 nav-back = Back
 nav-forward = Forward
 nav-sidebar = Toggle sidebar
-nav-sidebar-right = Show or hide lyrics and queue
+nav-sidebar-right = Output Log
 nav-pinned = Pinned
 nav-unpin = Unpin
 nav-pin-hint = Drop here to pin
@@ -822,3 +822,16 @@ nav-pins-alphabetical = Alphabetical
 nav-pins-kind = By type
 nav-show-full-library = Show full library
 nav-return-top = Back to top
+
+# toolkit navigation
+nav-mediatek = Mediatek
+nav-unisoc = Unisoc
+nav-xiaomi = Xiaomi
+nav-firmwares = Firmwares
+nav-terminal = Terminal
+nav-drivers = Drivers
+nav-mediatek-flasher = Flasher
+nav-mediatek-partitions = Partitions
+nav-mediatek-reboot-power = Reboot & Power
+nav-mediatek-settings = Settings
+nav-sidebar-right = Output Log
