@@ -1,4 +1,5 @@
 use gpui::{App, AppContext, Context, Entity, Global};
+use std::collections::VecDeque;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn chrono() -> String {
