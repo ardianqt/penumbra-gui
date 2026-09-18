@@ -64,7 +64,7 @@ impl Render for SidebarRight {
         let auto_scroll = log.auto_scroll();
 
         let entries: Vec<state::LogEntry> = log.entries().cloned().collect();
-        drop(log);
+        let _ = log;
 
         Panel::new("sidebar-right", Side::Right, self.width)
             .limits(MIN_WIDTH, MAX_WIDTH)
