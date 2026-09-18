@@ -1,12 +1,8 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-
 use gpui::prelude::*;
-use gpui::{Context, Entity, Render, SharedString, Task, Window, div, px};
-use penumbra_mtk::port::PortBackend;
+use gpui::{Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
 use state::{LogLevel, OutputLog, Io};
 use ui::{
-    ActiveTheme as _, Button, Checkbox, Input, Scroller, Text,
+    ActiveTheme as _, Button, Checkbox, Input, Scroller,
 };
 
 use crate::backend::MtkConnection;
@@ -21,6 +17,7 @@ pub(crate) struct MediatekFlasher {
     device_name: Option<SharedString>,
     da_bytes: Vec<u8>,
     task: Option<Task<()>>,
+    scrollbar: Entity<ui::Scrollbar>,
 }
 
 #[derive(Clone)]
@@ -83,6 +80,7 @@ impl MediatekFlasher {
             device_name: None,
             da_bytes: Vec::new(),
             task: None,
+            scrollbar: cx.new(|_| ui::Scrollbar::new(ScrollHandle::new())),
         }
     }
 
@@ -100,7 +98,7 @@ impl MediatekFlasher {
 
             this.update(cx, |this, cx| {
                 match result {
-                    Ok((info, msg)) => {
+                    Ok(Ok((info, msg))) => {
                         this.connected = true;
                         this.device_name = Some(info.chip_name.clone().into());
                         log.update(cx, |l, cx| {
@@ -108,8 +106,11 @@ impl MediatekFlasher {
                             l.push(LogLevel::Info, format!("HW Code: 0x{:08X}", info.hw_code), cx);
                         });
                     }
-                    Err(e) => {
+                    Ok(Err(e)) => {
                         log.update(cx, |l, cx| l.push(LogLevel::Error, e, cx));
+                    }
+                    Err(e) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Error, format!("Task failed: {e}"), cx));
                     }
                 }
                 cx.notify();
@@ -141,7 +142,7 @@ impl Render for MediatekFlasher {
                     .child(
                         div()
                             .flex_1()
-                            .text_color(match self.connected { true => theme.success, false => theme.muted_foreground })
+                            .text_color(match self.connected { true => theme.primary, false => theme.muted_foreground })
                             .text_sm()
                             .child(match &self.device_name {
                                 Some(n) => n.as_ref(),
@@ -166,7 +167,7 @@ impl Render for MediatekFlasher {
                     .gap_2()
                     .border_b_1()
                     .border_color(theme.sidebar_border)
-                    .child(div().text_secondary().text_sm().child("Scatter File:"))
+                    .child(div().text_sm().child("Scatter File:"))
                     .child(
                         div()
                             .flex_1()
@@ -222,7 +223,7 @@ impl Render for MediatekFlasher {
                     .child(div().flex_1().child("Status")),
             )
             .child(
-                Scroller::new("partition-list", cx)
+                Scroller::new("partition-list", &self.scrollbar)
                     .flex_1()
                     .child(
                         div()
@@ -234,14 +235,14 @@ impl Render for MediatekFlasher {
                                 let size_str = format_size(p.size);
                                 let (status_text, status_color) = match p.status {
                                     PartitionStatus::Unassigned => ("Unassigned", theme.muted_foreground),
-                                    PartitionStatus::Ready => ("Ready", theme.success),
-                                    PartitionStatus::Flashing => ("Flashing...", theme.warning),
-                                    PartitionStatus::Done => ("Done", theme.success),
-                                    PartitionStatus::Failed => ("Failed", theme.error),
+                                    PartitionStatus::Ready => ("Ready", theme.primary),
+                                    PartitionStatus::Flashing => ("Flashing...", theme.secondary),
+                                    PartitionStatus::Done => ("Done", theme.primary),
+                                    PartitionStatus::Failed => ("Failed", theme.danger),
                                 };
                                 let bl_badge = p.is_bootloader.then(|| {
-                                    div().px_1().rounded_sm().bg(theme.warning.opacity(0.2))
-                                        .text_color(theme.warning).text_xs().child("BL").into_any_element()
+                                    div().px_1().rounded_sm().bg(theme.secondary.opacity(0.2))
+                                        .text_color(theme.secondary).text_xs().child("BL").into_any_element()
                                 });
 
                                 div()

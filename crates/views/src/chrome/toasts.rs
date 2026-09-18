@@ -1,6 +1,5 @@
 use gpui::prelude::*;
 use gpui::{Context, Render, Window, div};
-use ui::ActiveTheme as _;
 
 pub(crate) struct ToastStack;
 

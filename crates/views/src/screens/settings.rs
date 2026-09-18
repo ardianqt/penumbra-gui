@@ -1,7 +1,7 @@
 use gpui::prelude::*;
-use gpui::{Context, Render, Window, div, px};
+use gpui::{Context, Entity, Render, Window, div};
 use state::{AppSettings, Sonora};
-use ui::{ActiveTheme as _, Button, Switch};
+use ui::{ActiveTheme as _, Button};
 
 pub(crate) struct SettingsView {
     settings: Entity<AppSettings>,
@@ -14,7 +14,7 @@ impl SettingsView {
         Self { settings }
     }
 
-    pub fn select(&mut self, _tab: router::SettingsTab, _cx: &mut Context<Self>) {
+    pub fn select(&mut self, _tab: router::SettingsTab, cx: &mut Context<Self>) {
         cx.notify();
     }
 }
@@ -29,7 +29,6 @@ impl Render for SettingsView {
             .flex_col()
             .size_full()
             .p_8()
-            .overflow_y_scroll()
             .child(
                 div()
                     .text_2xl()

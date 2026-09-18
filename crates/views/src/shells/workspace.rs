@@ -23,14 +23,14 @@ impl Workspace {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let sidebar = cx.new(SidebarLeft::new);
         let sidebar_right = cx.new(SidebarRight::new);
-        let player_bar = cx.new(PlayerBar::new);
+        let player_bar = cx.new(|_cx| PlayerBar::new());
 
         Self {
             sidebar,
             player_bar,
             sidebar_right,
             toasts: cx.new(ToastStack::new),
-            content: div().into(),
+            content: cx.new(|_cx| div()).into(),
             focus: cx.focus_handle(),
         }
     }

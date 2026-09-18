@@ -1,11 +1,8 @@
-use std::path::PathBuf;
 use gpui::prelude::*;
-use gpui::{Context, Entity, Render, SharedString, Task, Window, div, px};
-use penumbra_mtk::da::BootMode;
-use state::{LogLevel, OutputLog, Io};
-use ui::{ActiveTheme as _, Button, Checkbox, Scroller, Text};
+use gpui::{Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
+use state::{OutputLog, Io};
+use ui::{ActiveTheme as _, Button, Checkbox, Scroller};
 
-use crate::backend::MtkConnection;
 use crate::screens::mediatek::flasher::format_size;
 
 pub(crate) struct MediatekPartitions {
@@ -15,6 +12,7 @@ pub(crate) struct MediatekPartitions {
     partitions: Vec<PartitionEntry>,
     connected: bool,
     task: Option<Task<()>>,
+    scrollbar: Entity<ui::Scrollbar>,
 }
 
 #[derive(Clone)]
@@ -52,7 +50,7 @@ impl MediatekPartitions {
             is_critical: cr,
         }).collect();
 
-        Self { log, io, output_dir: None, partitions, connected: false, task: None }
+        Self { log, io, output_dir: None, partitions, connected: false, task: None, scrollbar: cx.new(|_| ui::Scrollbar::new(ScrollHandle::new())) }
     }
 }
 
@@ -102,10 +100,10 @@ impl Render for MediatekPartitions {
                     .child(div().flex_1().child("Operations")),
             )
             .child(
-                Scroller::new("partitions-list", cx).flex_1().child(
+                Scroller::new("partitions-list", &self.scrollbar).flex_1().child(
                     div().flex().flex_col().w_full().children(self.partitions.iter().map(|p| {
                         let critical_badge = p.is_critical.then(|| {
-                            div().px_1().rounded_sm().bg(theme.error.opacity(0.2)).text_color(theme.error)
+                            div().px_1().rounded_sm().bg(theme.danger.opacity(0.2)).text_color(theme.danger)
                                 .text_xs().child("CRIT").into_any_element()
                         });
                         div().flex().items_center().px_4().py(px(6.)).gap_4()

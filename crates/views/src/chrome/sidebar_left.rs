@@ -1,15 +1,14 @@
 use ui::{
-    ActiveTheme as _, Button, Panel, Scroller, Side, SNUG, Text, div as ui_div,
+    ActiveTheme as _, Button, Panel, Scroller, Side, SNUG,
 };
 
 use gpui::prelude::*;
 use gpui::{
-    App, Context, ElementId, Entity, Hsla, Pixels, Render, ScrollHandle, Window, div, px, svg,
+    App, AnyElement, Context, ElementId, Entity, Pixels, Render, ScrollHandle, Window, div, px,
 };
 use router::{
     Destination, MediatekTab, Navigation, NavigationEvent, SettingsTab, navigate,
 };
-use state::Sonora;
 
 const NAV: [(Option<router::NavEntry>, &str, Destination); 7] = [
     (
@@ -92,8 +91,7 @@ impl SidebarLeft {
         let trail = router::trail(cx);
 
         cx.observe(&trail, |_, _, cx| cx.notify()).detach();
-        cx.subscribe(&trail, |this, _, _: &NavigationEvent, cx| {
-            cx.notify();
+        cx.subscribe(&trail, |_this, _, _: &NavigationEvent, _cx| {
         })
         .detach();
 
@@ -104,6 +102,7 @@ impl SidebarLeft {
         let width = px(200.).clamp(MIN_WIDTH, MAX_WIDTH);
         let open = true;
 
+        let entity_id = cx.entity_id();
         Self {
             trail,
             at,
@@ -113,7 +112,7 @@ impl SidebarLeft {
             cramped: false,
             mediatek_open,
             settings_open,
-            scrollbar: cx.new(|_| ui::Scrollbar::new(ScrollHandle::new()).watching(cx.entity_id())),
+            scrollbar: cx.new(move |_| ui::Scrollbar::new(ScrollHandle::new()).watching(entity_id)),
         }
     }
 
@@ -286,7 +285,7 @@ impl SidebarLeft {
                             .into_any_element()
                     })
                     .collect();
-                ui_div().flex().flex_col().gap_1().children(items).into_any_element()
+                div().flex().flex_col().gap_1().children(items).into_any_element()
             }
             Group::Settings => {
                 tab("settings-tab-general".into(), Destination::Settings(SettingsTab::General))

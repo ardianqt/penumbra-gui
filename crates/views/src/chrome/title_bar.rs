@@ -1,8 +1,8 @@
 use gpui::prelude::*;
-use gpui::{AnyView, App, Context, Entity, EventEmitter, Render, Window, div, px, Button};
-use input::{MinimizeWindow, ZoomWindow, CloseWindow, NavigateBack, NavigateForward};
+use gpui::{AnyView, Context, EventEmitter, Render, Window, div, px};
+use input::{MinimizeWindow, ZoomWindow, CloseWindow};
 use router::{back, forward};
-use ui::ActiveTheme as _;
+use ui::{ActiveTheme as _, Button};
 
 pub(crate) struct TitleBarOptions {
     pub navigation: bool,

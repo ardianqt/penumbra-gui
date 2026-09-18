@@ -4,9 +4,8 @@ pub(crate) mod reboot_power;
 pub(crate) mod settings;
 
 use gpui::prelude::*;
-use gpui::{Context, Entity, Render, Window, div};
+use gpui::{Context, Entity, Render, Window};
 use router::MediatekTab;
-use ui::ActiveTheme as _;
 
 use flasher::MediatekFlasher;
 use partitions::MediatekPartitions;
@@ -39,7 +38,7 @@ impl MediatekView {
 }
 
 impl Render for MediatekView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         match self.tab {
             MediatekTab::Flasher => self.flasher.clone().into_any_element(),
             MediatekTab::Partitions => self.partitions.clone().into_any_element(),

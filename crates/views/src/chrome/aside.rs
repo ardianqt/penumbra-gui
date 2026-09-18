@@ -1,7 +1,5 @@
 use gpui::prelude::*;
 use gpui::{Context, Render, Window, div};
-use state::SideTab;
-use ui::ActiveTheme as _;
 
 pub(crate) struct Aside;
 

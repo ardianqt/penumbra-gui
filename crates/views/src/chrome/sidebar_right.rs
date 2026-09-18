@@ -1,7 +1,7 @@
 use gpui::prelude::*;
-use gpui::{Context, Entity, Pixels, Render, Window, div, px, svg};
+use gpui::{Context, Entity, Pixels, Render, ScrollHandle, Window, div, px, svg};
 use state::{LogFilter, LogLevel, OutputLog, SideTab};
-use ui::{ActiveTheme as _, Button, Panel, Scroller, Separator, Side, Text};
+use ui::{ActiveTheme as _, Button, Panel, Scroller, Side};
 
 const MIN_WIDTH: Pixels = px(240.);
 const MAX_WIDTH: Pixels = px(560.);
@@ -10,6 +10,7 @@ pub(crate) struct SidebarRight {
     width: Pixels,
     open: bool,
     log: Entity<OutputLog>,
+    scrollbar: Entity<ui::Scrollbar>,
 }
 
 impl SidebarRight {
@@ -21,6 +22,7 @@ impl SidebarRight {
             width: px(240.).clamp(MIN_WIDTH, MAX_WIDTH),
             open: false,
             log,
+            scrollbar: cx.new(|_| ui::Scrollbar::new(ScrollHandle::new())),
         }
     }
 
@@ -143,7 +145,7 @@ impl Render for SidebarRight {
                     )
                     // Log entries
                     .child(
-                        Scroller::new("output-log-scroll", cx)
+                        Scroller::new("output-log-scroll", &self.scrollbar)
                             .flex_1()
                             .child(
                                 div()
@@ -167,9 +169,9 @@ impl Render for SidebarRight {
                                         } else {
                                             entries.iter().map(|entry| {
                                                 let color = match entry.level {
-                                                    LogLevel::Error => theme.error,
-                                                    LogLevel::Warn => theme.warning,
-                                                    LogLevel::Info => theme.accent,
+                                                    LogLevel::Error => theme.danger,
+                                                    LogLevel::Warn => theme.secondary,
+                                                    LogLevel::Info => theme.primary,
                                                     LogLevel::Debug => theme.muted_foreground,
                                                 };
                                                 div()
@@ -184,13 +186,13 @@ impl Render for SidebarRight {
                                                             .flex_none()
                                                             .font_family("monospace")
                                                             .text_color(theme.muted_foreground.opacity(0.7))
-                                                            .child(&entry.timestamp),
+                                                            .child(entry.timestamp.clone()),
                                                     )
                                                     .child(
                                                         div()
                                                             .font_family("monospace")
                                                             .text_color(color)
-                                                            .child(&entry.message),
+                                                            .child(entry.message.clone()),
                                                     )
                                                     .into_any_element()
                                             }).collect()
@@ -210,12 +212,12 @@ fn filter_button(
 ) -> AnyElement {
     let theme = *cx.theme();
 
-    Button::new((label, "log-filter"))
+    Button::new(label)
         .label(label)
         .ghost()
         .small()
         .when(active, |b| {
-            b.text_color(theme.accent)
+            b.text_color(theme.primary)
         })
         .on_click(cx.listener(move |this, _, _, cx| {
             this.log.update(cx, |log, cx| log.set_filter(filter(), cx));

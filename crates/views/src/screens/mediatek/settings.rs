@@ -1,8 +1,8 @@
 use gpui::prelude::*;
-use gpui::{Context, Entity, Render, SharedString, Window, div, px, svg};
+use gpui::{Context, Entity, Render, SharedString, Window, div, px};
 use state::{LogLevel, OutputLog};
 use ui::{
-    ActiveTheme as _, Button, Checkbox, Input, Scroller, Switch, Text,
+    ActiveTheme as _, Button,
 };
 
 pub(crate) struct MediatekSettings {
@@ -73,7 +73,6 @@ impl Render for MediatekSettings {
             .flex()
             .flex_col()
             .size_full()
-            .overflow_y_scroll()
             .p_6()
             .child(div().text_2xl().child("Mediatek Settings"))
             .child(
@@ -87,14 +86,10 @@ impl Render for MediatekSettings {
                             .mt_3()
                             .gap_2()
                             .children([
-                                backend_option(cx, "Auto (Recommended)", "Automatically detects connected BROM/Preloader port", self.backend == Backend::Auto,
-                                    cx.listener(move |this: &mut MediatekSettings, _, _, cx| this.set_backend(Backend::Auto, cx))),
-                                backend_option(cx, "Libusb (Direct USB)", "Low-level async USB bulk transfers", self.backend == Backend::Libusb,
-                                    cx.listener(move |this: &mut MediatekSettings, _, _, cx| this.set_backend(Backend::Libusb, cx))),
-                                backend_option(cx, "nusb (WinUSB / Modern USB)", "Cross-platform pure user-mode USB stack", self.backend == Backend::Usb,
-                                    cx.listener(move |this: &mut MediatekSettings, _, _, cx| this.set_backend(Backend::Usb, cx))),
-                                backend_option(cx, "Serial (Virtual COM Port)", "Connects via /dev/ttyUSB or COM ports", self.backend == Backend::Serial,
-                                    cx.listener(move |this: &mut MediatekSettings, _, _, cx| this.set_backend(Backend::Serial, cx))),
+                                backend_option(cx, "Auto (Recommended)", "Automatically detects connected BROM/Preloader port", self.backend == Backend::Auto, Backend::Auto),
+                                backend_option(cx, "Libusb (Direct USB)", "Low-level async USB bulk transfers", self.backend == Backend::Libusb, Backend::Libusb),
+                                backend_option(cx, "nusb (WinUSB / Modern USB)", "Cross-platform pure user-mode USB stack", self.backend == Backend::Usb, Backend::Usb),
+                                backend_option(cx, "Serial (Virtual COM Port)", "Connects via /dev/ttyUSB or COM ports", self.backend == Backend::Serial, Backend::Serial),
                             ]),
                     ),
             )
@@ -122,48 +117,52 @@ fn backend_option(
     label: &'static str,
     detail: &'static str,
     selected: bool,
-    on_click: impl Fn(&mut MediatekSettings, &mut Window, &mut Context<MediatekSettings>) + 'static,
+    backend: Backend,
 ) -> AnyElement {
     let theme = *cx.theme();
     let accent = match selected {
-        true => theme.accent,
+        true => theme.primary,
         false => theme.muted_foreground,
     };
 
-    div()
-        .flex()
-        .items_center()
-        .gap_3()
-        .py_1()
-        .cursor_pointer()
-        .on_click(cx.listener(on_click))
+    Button::new(label)
+        .ghost()
+        .w_full()
         .child(
             div()
-                .flex_none()
-                .size(px(18.))
-                .rounded_full()
-                .border_2()
-                .border_color(accent)
                 .flex()
                 .items_center()
-                .justify_center()
+                .gap_3()
+                .py_1()
                 .child(
-                    match selected {
-                        true => div()
-                            .size(px(10.))
-                            .rounded_full()
-                            .bg(accent)
-                            .into_any_element(),
-                        false => div().into_any_element(),
-                    },
+                    div()
+                        .flex_none()
+                        .size(px(18.))
+                        .rounded_full()
+                        .border_2()
+                        .border_color(accent)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            match selected {
+                                true => div()
+                                    .size(px(10.))
+                                    .rounded_full()
+                                    .bg(accent)
+                                    .into_any_element(),
+                                false => div().into_any_element(),
+                            },
+                        ),
+                )
+                .child(
+                    div()
+                        .flex_col()
+                        .child(div().text_sm().text_color(match selected { true => theme.foreground, false => theme.muted_foreground }).child(label))
+                        .child(div().text_xs().text_color(theme.muted_foreground).child(detail)),
                 ),
         )
-        .child(
-            div()
-                .flex_col()
-                .child(div().text_sm().text_color(match selected { true => theme.foreground, false => theme.muted_foreground }).child(label))
-                .child(div().text_xs().text_color(theme.muted_foreground).child(detail)),
-        )
+        .on_click(cx.listener(move |this, _, _, cx| this.set_backend(backend, cx)))
         .into_any_element()
 }
 
@@ -181,7 +180,7 @@ fn path_row(
     };
     let badge_color = match is_default {
         true => theme.muted_foreground,
-        false => theme.warning,
+        false => theme.secondary,
     };
 
     div()
@@ -218,13 +217,13 @@ fn path_row(
                 ),
         )
         .child(
-            Button::new((label, "browse"))
+            Button::new(format!("browse-{label}"))
                 .label("Browse...")
                 .ghost()
                 .small(),
         )
         .child(
-            Button::new((label, "reset"))
+            Button::new(format!("reset-{label}"))
                 .label("Reset")
                 .ghost()
                 .small()

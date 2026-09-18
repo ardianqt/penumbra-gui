@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{Context, Render, Window, div};
+use gpui::{App, Context, Render, Window, div, px};
 use ui::ActiveTheme as _;
 
 pub(crate) struct PlayerBar;

@@ -2,7 +2,7 @@ use gpui::prelude::*;
 use gpui::{Context, Entity, Render, Window, div, px};
 use state::{LogLevel, OutputLog};
 use ui::{
-    ActiveTheme as _, Button, Card, Separator, Text,
+    ActiveTheme as _, Button,
 };
 
 pub(crate) struct MediatekRebootPower {
@@ -45,7 +45,6 @@ impl Render for MediatekRebootPower {
             .flex()
             .flex_col()
             .size_full()
-            .overflow_y_scroll()
             .p_6()
             .child(
                 div()
@@ -58,14 +57,10 @@ impl Render for MediatekRebootPower {
                     .flex_wrap()
                     .gap_4()
                     .mt_6()
-                    .child(tile_card(cx, "Normal Boot", theme.accent, "Reboot device into standard Android OS",
-                        cx.listener(|this: &mut MediatekRebootPower, _, _, cx| this.execute("Normal Boot", cx))))
-                    .child(tile_card(cx, "Fastboot", theme.foreground, "Reboot into MediaTek Fastboot bootloader",
-                        cx.listener(|this: &mut MediatekRebootPower, _, _, cx| this.execute("Fastboot", cx))))
-                    .child(tile_card(cx, "Meta Mode", theme.foreground, "Reboot into Factory Meta mode for calibration",
-                        cx.listener(|this: &mut MediatekRebootPower, _, _, cx| this.execute("Meta Mode", cx))))
-                    .child(tile_card(cx, "Power Off", theme.error, "Shut down device and release hardware bus",
-                        cx.listener(|this: &mut MediatekRebootPower, _, _, cx| this.execute("Power Off", cx)))),
+                    .child(tile_card(cx, "Normal Boot", theme.primary, "Reboot device into standard Android OS", "Normal Boot"))
+                    .child(tile_card(cx, "Fastboot", theme.foreground, "Reboot into MediaTek Fastboot bootloader", "Fastboot"))
+                    .child(tile_card(cx, "Meta Mode", theme.foreground, "Reboot into Factory Meta mode for calibration", "Meta Mode"))
+                    .child(tile_card(cx, "Power Off", theme.danger, "Shut down device and release hardware bus", "Power Off")),
             )
     }
 }
@@ -75,7 +70,7 @@ fn tile_card(
     title: &'static str,
     accent: gpui::Hsla,
     description: &'static str,
-    on_execute: impl Fn(&mut MediatekRebootPower, &mut Window, &mut Context<MediatekRebootPower>) + 'static,
+    action: &'static str,
 ) -> AnyElement {
     let theme = *cx.theme();
 
@@ -84,7 +79,7 @@ fn tile_card(
         .flex_col()
         .w(px(220.))
         .bg(theme.sidebar)
-        .rounded_lg(theme.radius)
+        .rounded_lg()
         .border_1()
         .border_color(theme.sidebar_border)
         .p_4()
@@ -109,7 +104,7 @@ fn tile_card(
                         .label("Execute")
                         .w_full()
                         .ghost()
-                        .on_click(cx.listener(on_execute)),
+                        .on_click(cx.listener(move |this, _, _, cx| this.execute(action, cx))),
                 ),
         )
         .into_any_element()

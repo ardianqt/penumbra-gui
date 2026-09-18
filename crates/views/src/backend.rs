@@ -1,12 +1,8 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use penumbra_mtk::device::{Device, DeviceBuilder};
+use penumbra_mtk::device::DeviceBuilder;
 use penumbra_mtk::port::{PortBackend, PortType};
-use penumbra_mtk::da::{BootMode, ScatterFile};
-use penumbra_mtk::traits::ProgressCallback;
-use penumbra_mtk::DeviceLog;
 
 #[derive(Clone)]
 pub struct DeviceInfo {
@@ -39,18 +35,18 @@ impl MtkConnection {
             .ok_or_else(|| "No MediaTek device found".to_string())?;
 
         let mut device = DeviceBuilder::new(port)
-            .with_da_data(da_bytes.to_vec())
+            .with_da_data(da_bytes)
             .build()
             .map_err(|e| format!("Device build error: {e}"))?;
 
         device.init().map_err(|e| format!("Init failed: {e}"))?;
 
         let devinfo = device.devinfo();
-        let chip_name = devinfo.chip().map(|c| c.name()).unwrap_or("Unknown");
+        let chip_name = devinfo.chip().map(|c| format!("{:?}", c)).unwrap_or_else(|| "Unknown".into());
 
         let info = DeviceInfo {
             chip_name: chip_name.to_string(),
-            hw_code: devinfo.hw_code(),
+            hw_code: devinfo.hw_code() as u32,
             storage_type: "Unknown".into(),
             sbc: devinfo.sbc_enabled(),
             sla: devinfo.sla_enabled(),

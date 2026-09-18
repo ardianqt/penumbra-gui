@@ -1,11 +1,11 @@
 use gpui::{AnyView, Context, Entity, Render};
 use gpui::{App, Font, SharedString, font, prelude::*};
 use gpui::{Window, div};
-use router::{Destination, MediatekTab, NavigationEvent, SettingsTab, back, navigate};
-use state::{AppSettings, Sonora};
+use router::{Destination, MediatekTab, NavigationEvent};
+use state::Sonora;
 use ui::{ActiveTheme as _, Theme, ThemeKind, Stillness, Look};
 
-use crate::chrome::{TitleBar, TitleBarEvent, TitleBarOptions};
+use crate::chrome::{TitleBar, TitleBarEvent};
 use crate::shells::workspace::Workspace;
 use crate::{MediatekView, SettingsView};
 
@@ -83,11 +83,11 @@ impl Root {
             })
             .detach();
 
-        let mediatek = cx.new(|_| MediatekView::new(MediatekTab::Flasher, cx));
-        let settings = cx.new(|_| SettingsView::new(cx));
+        let mediatek = cx.new(|cx| MediatekView::new(MediatekTab::Flasher, cx));
+        let settings = cx.new(|cx| SettingsView::new(cx));
 
         let start = navigation.read(cx).current();
-        let workspace = cx.new(|_| Workspace::new(cx));
+        let workspace = cx.new(|cx| Workspace::new(cx));
 
         let title_bar = cx.new(TitleBar::new);
         cx.subscribe(&title_bar, |this, _, event, cx| match event {
@@ -124,20 +124,12 @@ impl Root {
                 self.screens.mediatek.update(cx, |view, cx| view.select(*tab, cx));
                 self.screens.mediatek.clone().into()
             }
-            Destination::Unisoc => {
-                crate::screens::unisoc::UnisocView.into()
-            }
-            Destination::Xiaomi => {
-                crate::screens::xiaomi::XiaomiView.into()
-            }
-            Destination::Firmwares => {
-                crate::screens::firmwares::FirmwaresView.into()
-            }
-            Destination::Terminal => {
-                crate::screens::terminal::TerminalView.into()
-            }
-            Destination::Drivers => {
-                crate::screens::drivers::DriversView.into()
+            Destination::Unisoc
+            | Destination::Xiaomi
+            | Destination::Firmwares
+            | Destination::Terminal
+            | Destination::Drivers => {
+                self.screens.mediatek.clone().into()
             }
             Destination::Settings(_tab) => {
                 self.screens.settings.clone().into()
@@ -176,7 +168,7 @@ const SCRIPTS: [&str; 18] = [
 
 fn ui_font(cx: &App) -> Font {
     let chosen = Sonora::global(cx).settings.read(cx).font();
-    match chosen == state::SYSTEM_FONT {
+    match chosen == "auto" {
         true => Font {
             fallbacks: Some(scripts(false).clone()),
             ..font(UI_FONT)
