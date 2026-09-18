@@ -67,7 +67,6 @@ impl MediatekSettings {
 impl Render for MediatekSettings {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.ensure_log(cx);
-        let theme = *cx.theme();
 
         div()
             .flex()
@@ -132,7 +131,7 @@ fn backend_option(
         .py_1()
         .rounded_md()
         .hover(|s| s.bg(theme.secondary))
-        .on_click(cx.listener(move |this, _, _, cx| this.set_backend(backend, cx)))
+        .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| this.set_backend(backend, cx)))
         .child(
             div()
                 .flex_none()
@@ -203,16 +202,14 @@ fn path_row(
                         .text_color(badge_color)
                         .child(badge),
                 )
-                .child(
+                .child({
+                    let val = current.clone().unwrap_or_else(|| default.into());
                     div()
                         .flex_1()
                         .text_sm()
                         .text_color(theme.foreground)
-                        .child(match current {
-                            Some(p) => p.as_ref(),
-                            None => default,
-                        }),
-                ),
+                        .child(val)
+                }),
         )
         .child(
             Button::new(format!("browse-{label}"))

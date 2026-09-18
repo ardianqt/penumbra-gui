@@ -166,16 +166,14 @@ impl Render for MediatekFlasher {
                     .border_b_1()
                     .border_color(theme.sidebar_border)
                     .child(div().text_sm().child("Scatter File:"))
-                    .child(
+                    .child({
+                        let label = self.scatter_path.clone().unwrap_or_else(|| "No scatter file loaded".into());
                         div()
                             .flex_1()
                             .text_color(theme.muted_foreground)
                             .text_sm()
-                            .child(match &self.scatter_path {
-                                Some(p) => p.as_ref(),
-                                None => "No scatter file loaded",
-                            }),
-                    )
+                            .child(label)
+                    })
                     .child(Button::new("browse-scatter").label("Browse").ghost().small()),
             )
             .child(
