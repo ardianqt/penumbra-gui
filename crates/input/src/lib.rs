@@ -1,4 +1,5 @@
 use gpui::{KeyBinding, actions};
+use ui::Dismiss;
 
 actions!(
     toolkit,
