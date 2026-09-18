@@ -257,9 +257,10 @@ impl Render for MediatekFlasher {
                                             .child(div().child(p.name.clone()))
                                             .when_some(bl_badge, |this, badge| this.child(badge)),
                                     )
-                                    .child(div().w(px(160.)).text_color(theme.muted_foreground).child(
-                                        match &p.image_path { Some(path) => path.as_ref(), None => "-" },
-                                    ))
+                                    .child({
+                                        let img = p.image_path.clone().unwrap_or_else(|| "-".into());
+                                        div().w(px(160.)).text_color(theme.muted_foreground).child(img)
+                                    })
                                     .child(div().w(px(100.)).child(addr))
                                     .child(div().w(px(100.)).child(size_str))
                                     .child(div().flex_1().text_color(status_color).child(status_text))
