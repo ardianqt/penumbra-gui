@@ -19,7 +19,7 @@ pub struct Session {
 impl EventEmitter<SessionEvent> for Session {}
 
 impl Session {
-    pub fn new(cx: &mut Context<Self>) -> Self {
+    pub fn new(_cx: &mut Context<Self>) -> Self {
         Self {
             state: SessionState::SignedOut,
             name: String::new(),

@@ -12,7 +12,7 @@ use gpui::{
 };
 use serde::{Deserialize, Serialize};
 use ui::{
-    Layout, Look, Mode, Pace, Pin, Rounding, Saver, Sorting, Stillness, ThemeKind, ThemeOverrides,
+    Layout, Look, Mode, Pace, Rounding, Saver, Sorting, Stillness, ThemeKind, ThemeOverrides,
 };
 
 use crate::Sonora;

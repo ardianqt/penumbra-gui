@@ -79,7 +79,7 @@ pub fn init(cx: &mut App, io: Io) {
 
     let settings = cx.new(|_| AppSettings::load());
     let session = cx.new(|cx| Session::new(cx));
-    let log = OutputLog::init(cx);
+    let _log = OutputLog::init(cx);
 
     cx.set_global(Sonora { session, settings });
 }

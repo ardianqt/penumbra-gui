@@ -1,5 +1,16 @@
-use gpui::{App, Context, Entity, Global, SharedString};
-use std::collections::VecDeque;
+use gpui::{App, AppContext, Context, Entity, Global};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn chrono() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    let total_secs = now.as_secs();
+    let h = (total_secs / 3600) % 24;
+    let m = (total_secs / 60) % 60;
+    let s = total_secs % 60;
+    format!("{:02}:{:02}:{:02}", h, m, s)
+}
 
 #[derive(Clone, PartialEq)]
 pub enum LogLevel {
@@ -37,7 +48,7 @@ impl OutputLog {
         let entry = LogEntry {
             level,
             message: message.into(),
-            timestamp: chrono::now(),
+            timestamp: chrono(),
         };
         if self.entries.len() >= self.max_entries {
             self.entries.pop_front();
@@ -110,17 +121,4 @@ impl OutputLog {
         cx.set_global(OutputLogHandle(log.clone()));
         log
     }
-}
-
-// Placeholder - in real build this would use jiff or chrono
-fn chrono() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
-    let secs = now.as_secs();
-    let h = (secs / 3600) % 24;
-    let m = (secs / 60) % 60;
-    let s = secs % 60;
-    format!("{:02}:{:02}:{:02}", h, m, s)
 }
