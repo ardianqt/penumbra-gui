@@ -57,10 +57,6 @@ impl Io {
     }
 }
 
-pub(crate) async fn join<T>(handle: JoinHandle<Result<T>>) -> Result<T> {
-    handle.await?
-}
-
 pub struct Sonora {
     pub session: Entity<Session>,
     pub settings: Entity<AppSettings>,

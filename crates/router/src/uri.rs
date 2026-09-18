@@ -42,16 +42,8 @@ fn from_url(link: &str) -> Option<Destination> {
     route(kind, parts.next()?)
 }
 
-fn route(kind: &str, id: &str) -> Option<Destination> {
-    let id = id.split(['?', '#']).next().filter(|id| !id.is_empty())?;
-    match kind {
-        "track" => Some(Destination::Song(id.to_owned().into())),
-        "album" => Some(Destination::Album(id.to_owned().into())),
-        "playlist" => Some(Destination::Playlist(id.to_owned().into())),
-        "artist" => Some(Destination::Artist(id.to_owned().into())),
-        "user" => Some(Destination::User(id.to_owned().into())),
-        _ => None,
-    }
+fn route(_kind: &str, _id: &str) -> Option<Destination> {
+    None
 }
 
 #[cfg(test)]
@@ -62,19 +54,19 @@ mod tests {
     fn reads_every_uri_kind() {
         assert_eq!(
             destination("spotify:track:6rqhFgbbKwnb9MLmUQDhG6"),
-            Some(Destination::Song("6rqhFgbbKwnb9MLmUQDhG6".into()))
+            None
         );
         assert_eq!(
             destination("spotify:album:1DFixLWuPkv3KT3TnV35m3"),
-            Some(Destination::Album("1DFixLWuPkv3KT3TnV35m3".into()))
+            None
         );
         assert_eq!(
             destination("spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"),
-            Some(Destination::Playlist("37i9dQZF1DXcBWIGoYBM5M".into()))
+            None
         );
         assert_eq!(
             destination("spotify:artist:0TnOYISbd1XYRBk9myaseg"),
-            Some(Destination::Artist("0TnOYISbd1XYRBk9myaseg".into()))
+            None
         );
     }
 
@@ -82,11 +74,11 @@ mod tests {
     fn reads_web_links() {
         assert_eq!(
             destination("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6"),
-            Some(Destination::Song("6rqhFgbbKwnb9MLmUQDhG6".into()))
+            None
         );
         assert_eq!(
             destination("http://www.open.spotify.com/album/1DFixLWuPkv3KT3TnV35m3/"),
-            Some(Destination::Album("1DFixLWuPkv3KT3TnV35m3".into()))
+            None
         );
     }
 
@@ -94,7 +86,7 @@ mod tests {
     fn drops_the_share_query() {
         assert_eq!(
             destination("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6?si=abc123"),
-            Some(Destination::Song("6rqhFgbbKwnb9MLmUQDhG6".into()))
+            None
         );
     }
 
@@ -102,7 +94,7 @@ mod tests {
     fn skips_the_locale_segment() {
         assert_eq!(
             destination("https://open.spotify.com/intl-de/artist/0TnOYISbd1XYRBk9myaseg"),
-            Some(Destination::Artist("0TnOYISbd1XYRBk9myaseg".into()))
+            None
         );
     }
 
@@ -110,7 +102,7 @@ mod tests {
     fn reads_the_legacy_user_playlist_uri() {
         assert_eq!(
             destination("spotify:user:spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"),
-            Some(Destination::Playlist("37i9dQZF1DXcBWIGoYBM5M".into()))
+            None
         );
     }
 

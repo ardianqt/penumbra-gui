@@ -6,7 +6,7 @@ pub use link::Link;
 pub use navigation::{Navigation, NavigationEvent};
 pub use uri::destination;
 
-use gpui::{App, AppContext as _, Entity, Global, SharedString};
+use gpui::{App, AppContext as _, Entity, Global};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MediatekTab {
@@ -132,6 +132,7 @@ impl Screen {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SettingsTab {
     General,
 }
