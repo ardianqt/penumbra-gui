@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use gpui::prelude::*;
-use gpui::{AnyElement, Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
-use state::{OutputLog, Io};
+use gpui::{Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
+use state::{LogLevel, OutputLog, Io};
 use ui::{ActiveTheme as _, Button, Checkbox, Scroller};
 
 use crate::screens::mediatek::flasher::format_size;
@@ -60,8 +60,7 @@ impl MediatekPartitions {
 
             let result = io.spawn_blocking(move || {
                 let da = Vec::new();
-                let (mut device, _info) = crate::backend::MtkConnection::connect(&da)?;
-                crate::backend::MtkConnection::read_partition(&mut device, &part_name, &output)
+                crate::backend::MtkConnection::read_partition(&da, &part_name, &output)
             }).await;
 
             this.update(cx, |this, cx| {
@@ -93,8 +92,7 @@ impl MediatekPartitions {
 
             let result = io.spawn_blocking(move || {
                 let da = Vec::new();
-                let (mut device, _info) = crate::backend::MtkConnection::connect(&da)?;
-                crate::backend::MtkConnection::erase_partition(&mut device, &part_name)
+                crate::backend::MtkConnection::erase_partition(&da, &part_name)
             }).await;
 
             this.update(cx, |this, cx| {
@@ -133,25 +131,41 @@ impl MediatekPartitions {
     }
 }
 
+fn partition_row(p: &PartitionEntry, cx: &mut Context<MediatekPartitions>) -> AnyElement {
+    let theme = *cx.theme();
+    let idx = p.index;
+    let name = p.name.clone();
+    let enabled = p.enabled;
+    let start_addr = p.start_addr;
+    let size = p.size;
+
+    let name_for_dump = name.clone();
+    let name_for_erase = name.clone();
+
+    div().flex().items_center().px_4().py(px(6.)).gap_4()
+        .border_b_1().border_color(theme.sidebar_border.opacity(0.5)).text_sm()
+        .child(Checkbox::new(("part-entry", idx), enabled)
+            .on_click(cx.listener(move |this, _, _, _| { this.toggle_partition(idx); })))
+        .child(div().w(px(40.)).text_color(theme.muted_foreground).child(idx.to_string()))
+        .child(div().w(px(150.)).child(name))
+        .child(div().w(px(100.)).child(format!("0x{:08X}", start_addr)))
+        .child(div().w(px(100.)).child(format_size(size)))
+        .child(div().flex_1().flex().items_center().gap_2()
+            .child(Button::new(("dump", idx)).label("Dump").ghost().small()
+                .on_click(cx.listener(move |this, _, _, cx| this.dump_partition(&name_for_dump, cx))))
+            .child(Button::new(("erase", idx)).label("Erase").ghost().small()
+                .on_click(cx.listener(move |this, _, _, cx| this.erase_partition(&name_for_erase, cx)))))
+        .into_any_element()
+}
+
 impl Render for MediatekPartitions {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.theme();
 
-        div()
-            .flex()
-            .flex_col()
-            .size_full()
-            .overflow_hidden()
+        div().flex().flex_col().size_full().overflow_hidden()
             .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .px_4()
-                    .py_2()
-                    .gap_2()
-                    .bg(theme.sidebar)
-                    .border_b_1()
-                    .border_color(theme.sidebar_border)
+                div().flex().items_center().px_4().py_2().gap_2()
+                    .bg(theme.sidebar).border_b_1().border_color(theme.sidebar_border)
                     .child(div().text_sm().child("Output Folder:"))
                     .child({
                         let label = self.output_dir.clone().unwrap_or_else(|| "Not selected".into());
@@ -163,7 +177,8 @@ impl Render for MediatekPartitions {
                     .child(Button::new("backup-all").label("Backup All").ghost().small()),
             )
             .child(
-                div().flex().items_center().px_4().py_1().gap_2().border_b_1().border_color(theme.sidebar_border)
+                div().flex().items_center().px_4().py_1().gap_2()
+                    .border_b_1().border_color(theme.sidebar_border)
                     .child(Button::new("part-select-all").label("Select All").ghost().small()
                         .on_click(cx.listener(|this, _, _, cx| { this.select_all(); cx.notify(); })))
                     .child(Button::new("part-deselect-all").label("Deselect All").ghost().small()
@@ -172,8 +187,9 @@ impl Render for MediatekPartitions {
                     .child(Button::new("refresh-table").label("Refresh").ghost().small()),
             )
             .child(
-                div().flex().items_center().px_4().py_1().gap_4().bg(theme.sidebar)
-                    .border_b_1().border_color(theme.sidebar_border).text_sm().text_color(theme.muted_foreground)
+                div().flex().items_center().px_4().py_1().gap_4()
+                    .bg(theme.sidebar).border_b_1().border_color(theme.sidebar_border)
+                    .text_sm().text_color(theme.muted_foreground)
                     .child(div().w(px(36.)).child(""))
                     .child(div().w(px(40.)).child("#"))
                     .child(div().w(px(150.)).child("Partition"))
@@ -192,24 +208,19 @@ impl Render for MediatekPartitions {
                         let parts: Vec<_> = self.partitions.iter().map(|p| {
                             (p.index, p.name.clone(), p.enabled, p.start_addr, p.size)
                         }).collect();
-                        div().flex().flex_col().w_full().children(parts.into_iter().map(|(idx, name, enabled, start_addr, size)| {
-                            let name_clone = name.clone();
-                            div().flex().items_center().px_4().py(px(6.)).gap_4()
-                                .border_b_1().border_color(theme.sidebar_border.opacity(0.5)).text_sm()
-                                .child(Checkbox::new(("part-entry", idx), enabled)
-                                    .on_click(cx.listener(move |this, _, _, _| { this.toggle_partition(idx); })))
-                                .child(div().w(px(40.)).text_color(theme.muted_foreground).child(idx.to_string()))
-                                .child(div().w(px(150.)).flex().items_center().gap_1()
-                                    .child(div().child(name.clone())))
-                                .child(div().w(px(100.)).child(format!("0x{:08X}", start_addr)))
-                                .child(div().w(px(100.)).child(format_size(size)))
-                                .child(div().flex_1().flex().items_center().gap_2()
-                                    .child(Button::new(("dump", idx)).label("Dump").ghost().small()
-                                        .on_click(cx.listener(move |this, _, _, cx| this.dump_partition(&name_clone, cx))))
-                                    .child(Button::new(("erase", idx)).label("Erase").ghost().small()
-                                        .on_click(cx.listener(move |this, _, _, cx| this.erase_partition(&name_clone, cx)))))
-                                .into_any_element()
-                        })),
+                        let rows: Vec<AnyElement> = parts.iter()
+                            .map(|(idx, name, enabled, start_addr, size)| {
+                                partition_row(&PartitionEntry {
+                                    index: *idx,
+                                    name: name.clone(),
+                                    enabled: *enabled,
+                                    start_addr: *start_addr,
+                                    size: *size,
+                                    is_critical: false,
+                                }, cx)
+                            })
+                            .collect();
+                        div().flex().flex_col().w_full().children(rows).into_any_element()
                     },
                 ),
             )

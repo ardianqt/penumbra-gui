@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gpui::prelude::*;
-use gpui::{AnyElement, Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
+use gpui::{Context, Entity, Render, ScrollHandle, SharedString, Task, Window, div, px};
 use state::{LogLevel, OutputLog, Io};
 use ui::{
     ActiveTheme as _, Button, Checkbox, Input, Scroller,
@@ -97,17 +97,18 @@ impl MediatekFlasher {
     fn load_scatter(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         let log = self.log.clone();
         let io = self.io.clone();
+        let path_str = path.to_string_lossy().to_string();
 
         self.task = Some(cx.spawn(async move |this, cx| {
             let result = io.spawn_blocking(move || {
-                MtkConnection::parse_scatter(&path)
+                MtkConnection::parse_scatter(Path::new(&path_str))
             }).await;
 
             this.update(cx, |this, cx| {
                 match result {
                     Ok(Ok(entries)) => {
                         let count = entries.len();
-                        this.scatter_path = Some(path.to_string_lossy().to_string().into());
+                        this.scatter_path = Some(path_str.into());
                         this.scatter_entries = entries;
                         log.update(cx, |l, cx| {
                             l.push(LogLevel::Info, format!("Loaded scatter: {count} partitions found"), cx);
@@ -171,9 +172,8 @@ impl MediatekFlasher {
             });
 
             let result = io.spawn_blocking(move || {
-                let (mut device, _info) = MtkConnection::connect(&da)?;
-                let scatter_path = PathBuf::from(scatter.unwrap_or_default());
-                MtkConnection::flash_scatter(&mut device, &scatter_path, &selected)
+                let scatter_path = PathBuf::from(scatter.unwrap_or_default().to_string());
+                MtkConnection::flash_scatter(&da, &scatter_path, &selected)
             }).await;
 
             this.update(cx, |this, cx| {
@@ -326,7 +326,7 @@ impl Render for MediatekFlasher {
                                             .child(div().child(p.name.clone())),
                                     )
                                     .child(div().w(px(160.)).text_color(theme.muted_foreground).child(
-                                        if p.file_name.is_empty() { "-" } else { &p.file_name },
+                                        if p.file_name.is_empty() { "-".to_string() } else { p.file_name.clone() },
                                     ))
                                     .child(div().w(px(100.)).child(addr))
                                     .child(div().w(px(100.)).child(size_str))

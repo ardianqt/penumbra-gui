@@ -1,9 +1,7 @@
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::path::Path;
 
 use penumbra_mtk::da::BootMode;
-use penumbra_mtk::device::{Device, DeviceBuilder};
+use penumbra_mtk::device::DeviceBuilder;
 use penumbra_mtk::port::{PortBackend, PortType};
 
 #[derive(Clone)]
@@ -16,30 +14,24 @@ pub struct DeviceInfo {
     pub daa: bool,
 }
 
-pub struct MtkConnection {
-    cancel: Arc<AtomicBool>,
-}
+pub struct MtkConnection;
 
 impl MtkConnection {
-    pub fn new() -> Self {
-        Self {
-            cancel: Arc::new(AtomicBool::new(false)),
-        }
+    fn connect_device(da_bytes: &[u8]) -> Result<impl std::any::Any, String> {
+        let port = PortType::find_and_open(None, None, PortBackend::Auto)
+            .map_err(|e| format!("Port error: {e}"))?
+            .ok_or_else(|| "No MediaTek device found".to_string())?;
+
+        let mut device = DeviceBuilder::new(port)
+            .with_da_data(da_bytes)
+            .build()
+            .map_err(|e| format!("Device build error: {e}"))?;
+
+        device.init().map_err(|e| format!("Init failed: {e}"))?;
+        Ok(device)
     }
 
-    pub fn cancel(&self) {
-        self.cancel.store(true, Ordering::SeqCst);
-    }
-
-    pub fn is_cancelled(&self) -> bool {
-        self.cancel.load(Ordering::SeqCst)
-    }
-
-    pub fn reset_cancel(&self) {
-        self.cancel.store(false, Ordering::SeqCst);
-    }
-
-    pub fn connect(da_bytes: &[u8]) -> Result<(Device, DeviceInfo), String> {
+    pub fn connect(da_bytes: &[u8]) -> Result<(impl std::any::Any, DeviceInfo), String> {
         let port = PortType::find_and_open(None, None, PortBackend::Auto)
             .map_err(|e| format!("Port error: {e}"))?
             .ok_or_else(|| "No MediaTek device found".to_string())?;
@@ -66,22 +58,33 @@ impl MtkConnection {
         Ok((device, info))
     }
 
-    pub fn reboot(device: &mut Device, mode: &str) -> Result<(), String> {
+    pub fn reboot(da_bytes: &[u8], mode: &str) -> Result<(), String> {
         let boot_mode = match mode {
-            "Normal Boot" => BootMode::Normal,
+            "Normal Boot" | "Power Off" => BootMode::Normal,
             "Fastboot" => BootMode::Fastboot,
             "Meta Mode" => BootMode::Meta,
-            "Power Off" => BootMode::Off,
             _ => return Err(format!("Unknown reboot mode: {mode}")),
         };
+        let port = PortType::find_and_open(None, None, PortBackend::Auto)
+            .map_err(|e| format!("Port error: {e}"))?
+            .ok_or_else(|| "No MediaTek device found".to_string())?;
+        let mut device = DeviceBuilder::new(port)
+            .with_da_data(da_bytes)
+            .build()
+            .map_err(|e| format!("Device build error: {e}"))?;
+        device.init().map_err(|e| format!("Init failed: {e}"))?;
         device.reboot(boot_mode).map_err(|e| format!("Reboot failed: {e}"))
     }
 
-    pub fn read_partition(
-        device: &mut Device,
-        partition: &str,
-        output_path: &Path,
-    ) -> Result<String, String> {
+    pub fn read_partition(da_bytes: &[u8], partition: &str, output_path: &Path) -> Result<String, String> {
+        let port = PortType::find_and_open(None, None, PortBackend::Auto)
+            .map_err(|e| format!("Port error: {e}"))?
+            .ok_or_else(|| "No MediaTek device found".to_string())?;
+        let mut device = DeviceBuilder::new(port)
+            .with_da_data(da_bytes)
+            .build()
+            .map_err(|e| format!("Device build error: {e}"))?;
+        device.init().map_err(|e| format!("Init failed: {e}"))?;
         let file = std::fs::File::create(output_path)
             .map_err(|e| format!("Cannot create output file: {e}"))?;
         let mut writer = std::io::BufWriter::new(file);
@@ -90,17 +93,29 @@ impl MtkConnection {
         Ok(format!("Saved {partition} to {}", output_path.display()))
     }
 
-    pub fn erase_partition(device: &mut Device, partition: &str) -> Result<String, String> {
+    pub fn erase_partition(da_bytes: &[u8], partition: &str) -> Result<String, String> {
+        let port = PortType::find_and_open(None, None, PortBackend::Auto)
+            .map_err(|e| format!("Port error: {e}"))?
+            .ok_or_else(|| "No MediaTek device found".to_string())?;
+        let mut device = DeviceBuilder::new(port)
+            .with_da_data(da_bytes)
+            .build()
+            .map_err(|e| format!("Device build error: {e}"))?;
+        device.init().map_err(|e| format!("Init failed: {e}"))?;
         device.erase_partition(partition, |_, _| {})
             .map_err(|e| format!("Erase failed: {e}"))?;
         Ok(format!("Erased {partition}"))
     }
 
-    pub fn flash_scatter(
-        device: &mut Device,
-        scatter_path: &Path,
-        selected: &[String],
-    ) -> Result<String, String> {
+    pub fn flash_scatter(da_bytes: &[u8], scatter_path: &Path, selected: &[String]) -> Result<String, String> {
+        let port = PortType::find_and_open(None, None, PortBackend::Auto)
+            .map_err(|e| format!("Port error: {e}"))?
+            .ok_or_else(|| "No MediaTek device found".to_string())?;
+        let mut device = DeviceBuilder::new(port)
+            .with_da_data(da_bytes)
+            .build()
+            .map_err(|e| format!("Device build error: {e}"))?;
+        device.init().map_err(|e| format!("Init failed: {e}"))?;
         device.flash_scatter(
             scatter_path,
             |_, _| {},

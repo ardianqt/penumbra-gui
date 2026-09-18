@@ -40,8 +40,8 @@ impl MediatekRebootPower {
 
             this.update(cx, |this, cx| {
                 match result {
-                    Ok(Ok(msg)) => {
-                        log.update(cx, |l, cx| l.push(LogLevel::Info, msg, cx));
+                    Ok(Ok(())) => {
+                        log.update(cx, |l, cx| l.push(LogLevel::Info, format!("{action} sent"), cx));
                     }
                     Ok(Err(e)) => {
                         log.update(cx, |l, cx| l.push(LogLevel::Error, e, cx));
